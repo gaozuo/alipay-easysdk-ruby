@@ -1,0 +1,17 @@
+# Build artifacts
+*.gem
+/pkg/
+
+# Local tooling
+.DS_Store
+.idea/
+.vscode/
+
+# Bundler & docs
+/.bundle/
+/.yardoc
+/_yardoc/
+/coverage/
+/doc/
+/spec/reports/
+/tmp/

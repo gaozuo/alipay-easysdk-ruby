@@ -1,0 +1,328 @@
+require_relative 'alipay_constants'
+require_relative 'config'
+require_relative 'util/json_util'
+require_relative 'util/signer'
+require_relative 'util/sign_content_extractor'
+require 'net/http'
+require 'uri'
+require 'cgi'
+
+module Alipay
+  module EasySDK
+    module Kernel
+      class EasySDKKernel
+        attr_reader :config, :optional_text_params, :optional_biz_params, :text_params, :biz_params
+
+      def initialize(config)
+        @config = config
+        @optional_text_params = {}
+        @optional_biz_params = {}
+        @text_params = {}
+        @biz_params = {}
+      end
+
+      def inject_text_param(key, value)
+        if key != nil
+          @optional_text_params[key] = value
+        end
+      end
+
+      def inject_biz_param(key, value)
+        if key != nil
+          @optional_biz_params[key] = value
+        end
+      end
+
+      def get_timestamp
+        return Time.now.strftime("%Y-%m-%d %H:%M:%S")
+      end
+
+      def get_config(key)
+        case key
+        when 'protocol'
+          @config.protocol
+        when 'gatewayHost'
+          @config.gateway_host
+        when 'appId'
+          @config.app_id
+        when 'merchantPrivateKey'
+          @config.merchant_private_key
+        when 'alipayPublicKey'
+          @config.alipay_public_key
+        when 'signType'
+          @config.sign_type
+        when 'charset'
+          @config.charset
+        when 'format'
+          @config.format
+        when 'version'
+          @config.version
+        else
+          nil
+        end
+      end
+
+      def get_sdk_version
+        AlipayConstants::SDK_VERSION
+      end
+
+      def to_url_encoded_request_body(biz_params)
+        sorted_map = get_sorted_map(nil, biz_params, nil)
+        if sorted_map.nil? || sorted_map.empty?
+          return nil
+        end
+        build_query_string(sorted_map)
+      end
+
+      def read_as_json(response, method)
+        response_body = response.body
+        map = {}
+        map['body'] = response_body
+        map['method'] = method
+        return map
+      end
+
+      def get_random_boundary
+        Time.now.strftime("%Y-%m-%d %H:%M:%S") + ''
+      end
+
+      def generate_page(method, system_params, biz_params, text_params, sign)
+        puts "[DEBUG] generate_page - sign长度: #{sign.length}" if ENV['DEBUG']
+        if method == 'GET'
+          # 采集并排序所有参数
+          sorted_map = get_sorted_map(system_params, biz_params, text_params)
+          sorted_map[AlipayConstants::SIGN_FIELD] = sign
+          return get_gateway_server_url + '?' + build_query_string(sorted_map)
+        elsif method == 'POST'
+          # 完全按照PHP版本的逻辑：采集并排序所有参数，不覆盖已注入的参数
+          sorted_map = get_sorted_map(system_params, biz_params, text_params)
+          sorted_map[AlipayConstants::SIGN_FIELD] = sign
+          puts "[DEBUG] generate_page POST - sorted_map中sign长度: #{sorted_map[AlipayConstants::SIGN_FIELD].length}" if ENV['DEBUG']
+          return build_form(get_gateway_server_url, sorted_map)
+        else
+          raise "不支持" + method
+        end
+      end
+
+      def get_merchant_cert_sn
+        return @config.merchant_cert_sn
+      end
+
+      def get_alipay_cert_sn(resp_map)
+        if !@config.merchant_cert_sn.nil? && !@config.merchant_cert_sn.empty?
+          body = JSON.parse(resp_map['body'])
+          alipay_cert_sn = body['alipay_cert_sn']
+          return alipay_cert_sn
+        end
+      end
+
+      def get_alipay_root_cert_sn
+        return @config.alipay_root_cert_sn
+      end
+
+      def is_cert_mode
+        return @config.merchant_cert_sn
+      end
+
+      def extract_alipay_public_key(alipay_cert_sn)
+        # Ruby 版本只存储一个版本支付宝公钥
+        return @config.alipay_public_key
+      end
+
+      def verify(resp_map, alipay_public_key)
+        resp = JSON.parse(resp_map['body'])
+        sign = resp[AlipayConstants::SIGN_FIELD]
+        sign_content_extractor = Alipay::EasySDK::Kernel::Util::SignContentExtractor.new
+        content = sign_content_extractor.get_sign_source_data(resp_map['body'], resp_map['method'])
+        signer = Alipay::EasySDK::Kernel::Util::Signer.new
+        return signer.verify(content, sign, alipay_public_key)
+      end
+
+      def sign(system_params, biz_params, text_params, private_key)
+        sorted_map = get_sorted_map(system_params, biz_params, text_params)
+        data = get_sign_content(sorted_map)
+        if ENV['DEBUG']
+          puts "[DEBUG] sign content: #{data}"
+        end
+        puts "[DEBUG] 签名内容: #{data[0, 100]}..." if ENV['DEBUG']
+        signer = Alipay::EasySDK::Kernel::Util::Signer.new
+        signature = signer.sign(data, private_key)
+        puts "[DEBUG] 生成签名长度: #{signature.length}" if ENV['DEBUG']
+        return signature
+      end
+
+      def generate_order_string(system_params, biz_params, text_params, sign)
+        # 采集并排序所有参数
+        sorted_map = get_sorted_map(system_params, biz_params, text_params)
+        sorted_map[AlipayConstants::SIGN_FIELD] = sign
+        URI.encode_www_form(sorted_map)
+      end
+
+      def sort_map(random_map)
+        return random_map
+      end
+
+      def to_resp_model(resp_map)
+        body = resp_map['body']
+        method_name = resp_map['method']
+        response_node_name = method_name.gsub(".", "_") + "_response"
+
+        model = JSON.parse(body)
+        if body.include?("error_response")
+          result = model["error_response"]
+          result['body'] = body
+        else
+          result = model[response_node_name]
+          result['body'] = body
+        end
+        return result
+      end
+
+      def verify_params(parameters, public_key)
+        signer = Alipay::EasySDK::Kernel::Util::Signer.new
+        return signer.verify_params(parameters, public_key)
+      end
+
+      def concat_str(a, b)
+        return a + b
+      end
+
+      private
+
+      def build_query_string(sorted_map)
+        request_url = nil
+        sorted_map.each do |sys_param_key, sys_param_value|
+          if request_url.nil?
+            request_url = "#{sys_param_key}=" + url_encode(characet(sys_param_value.to_s, AlipayConstants::DEFAULT_CHARSET)) + "&"
+          else
+            request_url += "#{sys_param_key}=" + url_encode(characet(sys_param_value.to_s, AlipayConstants::DEFAULT_CHARSET)) + "&"
+          end
+        end
+        request_url = request_url[0...-1] unless request_url.nil?
+        return request_url
+      end
+
+      def get_sorted_map(system_params, biz_params, text_params)
+        @text_params = text_params
+        @biz_params = biz_params
+        if text_params != nil && !@optional_text_params.empty?
+          @text_params = text_params.merge(@optional_text_params)
+        elsif text_params == nil
+          @text_params = @optional_text_params
+        end
+        if biz_params != nil && !@optional_biz_params.empty?
+          @biz_params = biz_params.merge(@optional_biz_params)
+        elsif biz_params == nil
+          @biz_params = @optional_biz_params
+        end
+
+        json = Alipay::EasySDK::Kernel::Util::JsonUtil.new
+        if @biz_params != nil
+          biz_params = json.to_json_string(@biz_params)
+        end
+        sorted_map = system_params || {}
+        if !biz_params.nil? && !biz_params.empty?
+          # 模拟PHP json_encode($bizParams, JSON_UNESCAPED_UNICODE)
+          json_string = JSON.generate(JSON.parse(biz_params)).gsub('/', "\\/")
+          sorted_map[AlipayConstants::BIZ_CONTENT_FIELD] = json_string
+        end
+        if !@text_params.nil? && !@text_params.empty?
+          if !sorted_map.empty?
+            sorted_map = sorted_map.merge(@text_params)
+          else
+            sorted_map = @text_params
+          end
+        end
+        if get_config('notify_url') != nil
+          sorted_map['notify_url'] = get_config('notify_url')
+        end
+        return sorted_map
+      end
+
+      def get_sign_content(params)
+        # 模拟PHP的ksort
+        sorted_params = params.sort_by { |k, _| k.to_s }.to_h
+
+        string_to_be_signed = ""
+        i = 0
+        sorted_params.each do |k, v|
+          if !check_empty(v) && v.to_s[0] != "@"
+            # 转换成目标字符集
+            v = characet(v.to_s, AlipayConstants::DEFAULT_CHARSET)
+            if i == 0
+              string_to_be_signed += "#{k}=#{v}"
+            else
+              string_to_be_signed += "&#{k}=#{v}"
+            end
+            i += 1
+          end
+        end
+        return string_to_be_signed
+      end
+
+      def get_gateway_server_url
+        return get_config('protocol') + '://' + get_config('gatewayHost').gsub('/gateway.do', '') + '/gateway.do'
+      end
+
+      def check_empty(value)
+        if value.nil?
+          return true
+        end
+        if value == ""
+          return true
+        end
+        if value.to_s.strip == ""
+          return true
+        end
+        return false
+      end
+
+      def characet(data, target_charset)
+        if !data.nil? && !data.empty?
+          file_type = AlipayConstants::DEFAULT_CHARSET
+          if file_type.downcase != target_charset.downcase
+            begin
+              data = data.encode(target_charset, invalid: :replace, undef: :replace)
+            rescue
+              data = data.force_encoding(target_charset)
+            end
+          end
+        end
+        return data
+      end
+
+      def url_encode(str)
+        # 模拟PHP的urlencode
+        str.gsub(/[^a-zA-Z0-9\-_.~]/n) do |s|
+          '%' + s.unpack('H2' * s.bytesize).join('%').upcase
+        end
+      end
+
+      def build_form(url, params)
+        puts "[DEBUG] build_form - 原始params keys: #{params.keys.join(', ')}" if ENV['DEBUG']
+        puts "[DEBUG] build_form - sign长度: #{params[AlipayConstants::SIGN_FIELD].length}" if ENV['DEBUG'] && params[AlipayConstants::SIGN_FIELD]
+
+        # 完全按照PHP版本的PageUtil::buildForm方法：过滤空值参数
+        form_fields = ""
+        params.each do |key, val|
+          if !check_empty(val)  # 与PHP版本的checkEmpty逻辑完全一致
+            # 按照PHP版本：将单引号替换为&amp;apos;
+            escaped_val = val.to_s.gsub("'", "&apos;")
+            form_fields += "<input type='hidden' name='#{key}' value='#{escaped_val}'/>"
+          end
+        end
+
+        # 完全按照PHP版本：在action URL中添加charset参数
+        action_url = "#{url}?charset=#{AlipayConstants::DEFAULT_CHARSET}"
+
+        <<~HTML
+          <form id='alipaysubmit' name='alipaysubmit' action='#{action_url}' method='POST'>
+            #{form_fields}
+            <input type='submit' value='ok' style='display:none;'></form>
+          <script>document.forms['alipaysubmit'].submit();</script>
+        HTML
+      end
+      end
+    end
+  end
+end

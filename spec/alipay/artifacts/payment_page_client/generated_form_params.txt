@@ -1,0 +1,11 @@
+method=alipay.trade.page.pay
+app_id=9021000156667919
+timestamp=2025-10-17 17:22:37
+format=json
+version=1.0
+alipay_sdk=alipay-easysdk-ruby-1.0.0
+charset=UTF-8
+sign_type=RSA2
+biz_content={"subject":"1123","out_trade_no":"70501111111S001111119","total_amount":"9.00","product_code":"FAST_INSTANT_TRADE_PAY","seller_id":"2088102147948060"}
+return_url=https://your-return-url.com
+sign=REq0hRkV+g7pnC+TWjwhV3tJ1sKW8lGiELkWnz2VWd0Cwid4qAnSWKlrhmCiLxDz1LDUOpr8i4ORCkxO7SGXrXFygDYAA93SiVI6FaQdfuFazLPNTyJNYRd20+Wsx56DGZku8gSHhSc2nFlQtO6vC1ToheWffIk9NZBS9gLiokixlCVDp1SBqudTiQAQ5ABJf+YFTLkrHkRvcEV1pKdL0Eee9bhau+D7nHtU4On7YqGrPhXaAHObXN5oYGw/9DgSKpY1hhh5XiCV9XFnXlidw0WQFLBijcrXakR+cv+abrTpkxvLXCtUopeOA6w6YrONUPKoLavSHYbohJGKg0XH3g==
