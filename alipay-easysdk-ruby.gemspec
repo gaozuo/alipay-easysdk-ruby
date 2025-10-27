@@ -10,12 +10,12 @@ Gem::Specification.new do |spec|
 
   spec.summary = "支付宝开放平台Alipay EasySDK的Ruby版本实现"
   spec.description = "Alipay EasySDK Ruby版本 - 提供完整的支付宝支付功能支持，包括当面付、手机网站支付、APP支付、花呗分期等。简化API调用，提供链式调用支持，支持证书模式和公钥模式。"
-  spec.homepage = "https://github.com/alipay/alipay-easysdk"
+  spec.homepage = "https://github.com/gaozuo/alipay-easysdk-ruby"
   spec.license = "MIT"
   spec.required_ruby_version = ">= 2.5.0"
 
   spec.metadata["homepage_uri"] = spec.homepage
-  spec.metadata["source_code_uri"] = spec.homepage
+  spec.metadata["source_code_uri"] = "#{spec.homepage}.git"
   spec.metadata["changelog_uri"] = "#{spec.homepage}/blob/main/CHANGELOG.md"
   spec.metadata["documentation_uri"] = "#{spec.homepage}/blob/main/README.md"
 
