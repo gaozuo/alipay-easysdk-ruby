@@ -4,11 +4,12 @@ module Alipay
       module Page
         module Models
           class AlipayTradePagePayResponse
-            attr_accessor :body
+            attr_accessor :body, :payment_url
 
             def self.from_map(response)
               new.tap do |instance|
                 instance.body = response['body']
+                instance.payment_url = response['payment_url']
               end
             end
 

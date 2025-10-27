@@ -3,6 +3,7 @@
 require 'spec_helper'
 require 'cgi'
 require 'json'
+require 'uri'
 
 RSpec.describe Alipay::EasySDK::Kernel::EasySDKKernel do
   subject(:kernel) { described_class.new(config) }
@@ -78,10 +79,26 @@ RSpec.describe Alipay::EasySDK::Kernel::EasySDKKernel do
     end
 
     it 'builds a GET gateway url with sign appended' do
+      expected_url = kernel.generate_payment_url(system_params, {}, {}, 'signature123')
       url = kernel.generate_page('GET', system_params, {}, {}, 'signature123')
 
-      expect(url).to start_with('https://openapi.alipay.com/gateway.do?')
+      expect(url).to eq(expected_url)
+      expect(url).to start_with('https://openapi.alipay.com/gateway.do?charset=UTF-8&')
       expect(url).to include('sign=signature123')
+    end
+  end
+
+  describe '#generate_payment_url' do
+    let(:system_params) { { 'method' => 'foo' } }
+
+    it 'reuses the existing parameter assembly for gateway urls' do
+      payment_url = kernel.generate_payment_url(system_params, { 'subject' => 'Book' }, { 'return_url' => 'https://example.com' }, 'signature123')
+      query = CGI.parse(URI(payment_url).query)
+
+      expect(query['sign'].first).to eq('signature123')
+      expect(query['method'].first).to eq('foo')
+      expect(query['return_url'].first).to eq('https://example.com')
+      expect(query['biz_content'].first).to include('"subject":"Book"')
     end
   end
 

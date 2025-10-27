@@ -1,7 +1,7 @@
 PATH
   remote: .
   specs:
-    alipay-easysdk-ruby (1.0.0)
+    alipay-easysdk-ruby (1.0.1)
 
 GEM
   remote: https://rubygems.org/
@@ -14,6 +14,9 @@ GEM
       bigdecimal
       rexml
     diff-lcs (1.6.2)
+    ethon (0.15.0)
+      ffi (>= 1.15.0)
+    ffi (1.17.2-arm64-darwin)
     hashdiff (1.2.1)
     io-console (0.8.1)
     irb (1.6.3)
@@ -36,6 +39,8 @@ GEM
       diff-lcs (>= 1.2.0, < 2.0)
       rspec-support (~> 3.13.0)
     rspec-support (3.13.6)
+    typhoeus (1.5.0)
+      ethon (>= 0.9.0, < 0.16.0)
     webmock (3.25.1)
       addressable (>= 2.8.0)
       crack (>= 0.3.2)
@@ -51,6 +56,7 @@ DEPENDENCIES
   irb
   rake (~> 13.0)
   rspec (~> 3.0)
+  typhoeus (~> 1.4)
   webmock (~> 3.0)
 
 BUNDLED WITH

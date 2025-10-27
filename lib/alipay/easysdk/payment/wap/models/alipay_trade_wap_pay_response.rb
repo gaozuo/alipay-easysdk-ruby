@@ -4,11 +4,12 @@ module Alipay
       module Wap
         module Models
           class AlipayTradeWapPayResponse
-            attr_accessor :body, :code, :sub_code
+            attr_accessor :body, :code, :sub_code, :payment_url
 
             def self.from_map(response)
               new.tap do |instance|
                 instance.body = response['body']
+                instance.payment_url = response['payment_url']
               end
             end
 

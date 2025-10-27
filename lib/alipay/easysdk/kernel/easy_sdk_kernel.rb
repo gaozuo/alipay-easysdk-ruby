@@ -88,20 +88,20 @@ module Alipay
 
       def generate_page(method, system_params, biz_params, text_params, sign)
         puts "[DEBUG] generate_page - sign长度: #{sign.length}" if ENV['DEBUG']
+        signed_params = build_signed_params(system_params, biz_params, text_params, sign)
         if method == 'GET'
-          # 采集并排序所有参数
-          sorted_map = get_sorted_map(system_params, biz_params, text_params)
-          sorted_map[AlipayConstants::SIGN_FIELD] = sign
-          return get_gateway_server_url + '?' + build_query_string(sorted_map)
+          return build_gateway_url(signed_params)
         elsif method == 'POST'
-          # 完全按照PHP版本的逻辑：采集并排序所有参数，不覆盖已注入的参数
-          sorted_map = get_sorted_map(system_params, biz_params, text_params)
-          sorted_map[AlipayConstants::SIGN_FIELD] = sign
-          puts "[DEBUG] generate_page POST - sorted_map中sign长度: #{sorted_map[AlipayConstants::SIGN_FIELD].length}" if ENV['DEBUG']
-          return build_form(get_gateway_server_url, sorted_map)
+          puts "[DEBUG] generate_page POST - sorted_map中sign长度: #{signed_params[AlipayConstants::SIGN_FIELD].length}" if ENV['DEBUG']
+          return build_form(get_gateway_server_url, signed_params)
         else
           raise "不支持" + method
         end
+      end
+
+      def generate_payment_url(system_params, biz_params, text_params, sign)
+        signed_params = build_signed_params(system_params, biz_params, text_params, sign)
+        build_gateway_url(signed_params)
       end
 
       def get_merchant_cert_sn
@@ -321,6 +321,19 @@ module Alipay
             <input type='submit' value='ok' style='display:none;'></form>
           <script>document.forms['alipaysubmit'].submit();</script>
         HTML
+      end
+
+      def build_signed_params(system_params, biz_params, text_params, sign)
+        sorted_map = get_sorted_map(system_params, biz_params, text_params)
+        sorted_map[AlipayConstants::SIGN_FIELD] = sign
+        sorted_map
+      end
+
+      def build_gateway_url(signed_params)
+        base_url = get_gateway_server_url + "?charset=#{AlipayConstants::DEFAULT_CHARSET}"
+        query = build_query_string(signed_params)
+        return base_url if query.nil? || query.empty?
+        base_url + '&' + query
       end
       end
     end

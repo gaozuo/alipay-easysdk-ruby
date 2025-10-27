@@ -1,0 +1,33 @@
+#!/usr/bin/env ruby
+
+require 'alipay/easysdk'
+
+# 配置 SDK
+Alipay::EasySDK.configure(
+  protocol: 'https',
+  gateway_host: 'openapi-sandbox.dl.alipaydev.com',
+  sign_type: 'RSA2',
+  app_id: '9021000156667919',
+  merchant_private_key: 'MIIEogIBAAKCAQEAmy8gfxY5RFBKixIWoflLqULF1gZ43QdlEYln+1f0k+tbiWbhi3DBOKp9gjgGmOJmBzVuaDQ+VMDmrolIc8tOz6urQU2PSjMSSqLub3xwyxiZO2qjfkn5riO68ITkr3RN7zVyZcheoaTfexygtg7xH8eqbqhghnVs97KwKnkIt7mzhIvbs60qrV8YAkbm6Hw85s4BVBoBleFZPQCBDXffVTz72GGu5iFHcbVoZdtT2GKPWWiaYb9BEuzzmUo41pPdHrMYP0VnR9UdGnLZyC70YXQ6ZshRux0/rkIrxLGVlk5UBTqdxtP8r2oqoVLl4L5tBcTw4gRPqL4+UiDQ7YE3ZQIDAQABAoIBAHhcqhjIFOy+VcLd6b4BjMSgbK+e33mXtbVPXN4ejy13e8zrhf5QGx2nZqdsavmDh90JfTPHaZz07TbsdcySIPOD09VXoc7MI+DN1J+V5iowTxE9mcdm+wgs4F6SxIitbZEeZDc7nOJE7a0gPCpZFn4usCsZ35wKUdUgu/CFZdSRNdSKBdwdDQcMA/rClHqDvIeCBAbK979cr4/ltAofBQTt9YhZsXpChSQZOnyYFRBPtlblthPcJQOhN6ZH7EsNftdh+elHNjNaH+a6fcCiS4J9yhEtqeQs0ZGDSsE3b7zHW+cOaicvE4X9U651ipVxkYXRK1WhfctRF/cjzqsVtNUCgYEA30NT2kk3CLc8/gXEm/oitEkLx3gp+eH5gLrAE41fcTUloeg+bHXPqQh0IFyLTNUIJ4RF/HdlqHFciKVDUN5HVZeG/RAB3BgTpQV174LuebRs6Fuj3T/qvaV9GdKsTMwnZpljsTJJFiQNMW/vczmy+HbPeMO4r1TWk8GgaD4580MCgYEAsfBObh5dC9D9hIkPIaxZFdAIhmWN8MF3WbEg0LI3YzjW9b6Qd6rn9IyB2UtM4u+lseiLe5XMrR1nzwgxyELyr/w2Mov2F9Zf/DhUqPv/qpegu7xD6U8ca4fJMYfN3sT9R2M3P074U15MlPjBEojtSwg/4oBEcono43+lcRiI/DcCgYAHp6BNYKtBYj72Gq6GBoqAEe0UdrtBtQy/7Cc/xF4cXI0gwvy47UUkb4TDw0iHZtpzuGZJ5LIYl2Jr0PbA5A4gEiTvskfOCwlJZCmJ/7w7cgM16EZzBIkA3ZavdvivXWSQcPvpDGdTGgNVyZe1JKpNOI2ef19qq4b74+yjBlcoTwKBgA/vUkbAR1rgi2OMFqPQWGYArFLE03JFERgiKasm2pjzJST6vNtKnd0jnBlGigskpPUKuzsFDkBOitZaiILDpBIohv391LsLwqrGrKY5cwrm60kEshw5rnTewyDBZalWgMwc0XzE6K4mmrsYj8nGI2H9yiLRk8+iFA4Th1BafyH/AoGAcQHDXuNR0inKvsoEX1hYAoYmE7GwYcxl88AdrAnfqJHgdxHaWCKb/gYiXqRR0RFhiAEZCuVm9IvJ6Dh2eR2psC9lyixgQiyiJYLSA1sLzVzQS/OkSpC3w5srcwxOWzRTBreZbGzV+zJqh9NBCQt0S3Bq2Mi1qYxzxUAytlYSdrQ=',
+  alipay_public_key: 'MIIBIjANBgkqhkiG9w0BAQEFAAOCAQ8AMIIBCgKCAQEAmy8gfxY5RFBKixIWoflLqULF1gZ43QdlEYln+1f0k+tbiWbhi3DBOKp9gjgGmOJmBzVuaDQ+VMDmrolIc8tOz6urQU2PSjMSSqLub3xwyxiZO2qjfkn5riO68ITkr3RN7zVyZcheoaTfexygtg7xH8eqbqhghnVs97KwKnkIt7mzhIvbs60qrV8YAkbm6Hw85s4BVBoBleFZPQCBDXffVTz72GGu5iFHcbVoZdtT2GKPWWiaYb9BEuzzmUo41pPdHrMYP0VnR9UdGnLZyC70YXQ6ZshRux0/rkIrxLGVlk5UBTqdxtP8r2oqoVLl4L5tBcTw4gRPqL4+UiDQ7YE3ZQIDAQAB',
+  encrypt_key: 'rEoolKE9DfJIQHMMelZapw=='
+)
+
+# 直接获取支付链接（GET 方式）
+response = Alipay::EasySDK.page
+  .pay(
+    '小程序会员充值',
+    'ORDER1234567890',
+    '19.80',
+    'https://merchant.test/return'
+  )
+
+if response.success?
+  puts '支付表单:'
+  puts response.form
+  puts
+  puts '支付链接:'
+  puts response.payment_url
+else
+  warn "调用失败: #{response.error_message}"
+end

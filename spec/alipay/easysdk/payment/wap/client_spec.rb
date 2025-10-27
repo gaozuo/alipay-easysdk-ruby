@@ -8,7 +8,7 @@ RSpec.describe Alipay::EasySDK::Payment::Wap::Client do
       Alipay::EasySDK::Kernel::EasySDKKernel,
       get_config: nil,
       get_timestamp: '2024-01-01 00:00:00',
-      get_sdk_version: 'alipay-easysdk-ruby-1.0.0',
+      get_sdk_version: 'alipay-easysdk-ruby-1.0.1',
       get_merchant_cert_sn: nil,
       get_alipay_root_cert_sn: nil
     )
@@ -38,11 +38,13 @@ RSpec.describe Alipay::EasySDK::Payment::Wap::Client do
 
       expect(kernel).to receive(:sign).with(expected_system_params, expected_biz_params, expected_text_params, SpecSupport::TestKeys::RSA_PRIVATE_KEY).and_return('signature')
       expect(kernel).to receive(:generate_page).with('POST', expected_system_params, expected_biz_params, expected_text_params, 'signature').and_return('<form></form>')
+      expect(kernel).to receive(:generate_payment_url).with(expected_system_params, expected_biz_params, expected_text_params, 'signature').and_return('https://example.com/gateway?biz=wap')
 
       response = client.pay('Subject', 'ORDER-1', '9.00', 'https://quit.example.com', 'https://return.example.com')
 
       expect(response).to be_success
       expect(response.form).to eq('<form></form>')
+      expect(response.payment_url).to eq('https://example.com/gateway?biz=wap')
     end
   end
 

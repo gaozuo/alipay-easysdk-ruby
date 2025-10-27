@@ -8,3 +8,4 @@ gemspec
 gem "irb"
 gem "rake", "~> 13.0"
 gem "base64"
+gem "typhoeus", "~> 1.4", group: :test
