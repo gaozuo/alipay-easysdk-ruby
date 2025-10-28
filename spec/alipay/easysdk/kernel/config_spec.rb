@@ -57,4 +57,26 @@ RSpec.describe Alipay::EasySDK::Kernel::Config do
       expect { config.validate }.not_to raise_error
     end
   end
+
+  it 'supports extended configuration fields and camelCase aliases' do
+    config = described_class.new(
+      options.merge(
+        notifyUrl: 'https://notify.example.com',
+        httpProxy: '127.0.0.1:8080',
+        ignoreSSL: 'true',
+        merchantCertPath: '/path/to/merchantCert.crt',
+        alipayCertPath: '/path/to/alipayCert.crt',
+        alipayRootCertPath: '/path/to/rootCert.crt',
+        encryptKey: 'base64key=='
+      )
+    )
+
+    expect(config.notify_url).to eq('https://notify.example.com')
+    expect(config.http_proxy).to eq('127.0.0.1:8080')
+    expect(config.ignore_ssl).to eq('true')
+    expect(config.merchant_cert_path).to eq('/path/to/merchantCert.crt')
+    expect(config.alipay_cert_path).to eq('/path/to/alipayCert.crt')
+    expect(config.alipay_root_cert_path).to eq('/path/to/rootCert.crt')
+    expect(config.encrypt_key).to eq('base64key==')
+  end
 end

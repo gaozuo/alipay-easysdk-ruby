@@ -1,6 +1,7 @@
 require 'net/http'
 require 'uri'
 require 'cgi'
+require 'openssl'
 
 require_relative '../../kernel/easy_sdk_kernel'
 require_relative 'models/alipay_trade_create_response'
@@ -163,9 +164,9 @@ module Alipay
           end
 
           def perform_http_request(uri, request)
-            http = Net::HTTP.new(uri.host, uri.port)
+            http = build_http_client(uri)
             http.use_ssl = uri.scheme == 'https'
-            http.verify_mode = OpenSSL::SSL::VERIFY_NONE if http.use_ssl?
+            http.verify_mode = OpenSSL::SSL::VERIFY_NONE if http.use_ssl? && ignore_ssl?
             http.open_timeout = 15
             http.read_timeout = 15
             http.request(request)
@@ -182,6 +183,32 @@ module Alipay
           def clear_optional_params
             @kernel.optional_text_params.clear if @kernel.optional_text_params
             @kernel.optional_biz_params.clear if @kernel.optional_biz_params
+          end
+
+          def build_http_client(uri)
+            proxy_settings = http_proxy_settings
+            if proxy_settings
+              Net::HTTP.new(uri.host, uri.port, *proxy_settings)
+            else
+              Net::HTTP.new(uri.host, uri.port)
+            end
+          end
+
+          def http_proxy_settings
+            raw_proxy = @kernel.get_config('httpProxy')
+            return nil if raw_proxy.nil? || raw_proxy.to_s.strip.empty?
+
+            proxy_uri = raw_proxy =~ %r{^https?://} ? URI(raw_proxy) : URI("http://#{raw_proxy}")
+            [proxy_uri.host, proxy_uri.port, proxy_uri.user, proxy_uri.password]
+          rescue URI::InvalidURIError
+            nil
+          end
+
+          def ignore_ssl?
+            value = @kernel.get_config('ignoreSSL')
+            return false if value.nil?
+
+            value == true || value.to_s.strip.downcase == 'true'
           end
         end
       end

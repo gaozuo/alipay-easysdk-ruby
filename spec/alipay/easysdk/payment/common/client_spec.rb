@@ -61,6 +61,27 @@ RSpec.describe Alipay::EasySDK::Payment::Common::Client do
     end
   end
 
+  describe '#perform_http_request' do
+    let(:uri) { URI('https://openapi.alipay.com/gateway.do?foo=bar') }
+    let(:request) { Net::HTTP::Post.new(uri.request_uri) }
+
+    it 'respects proxy and ignore_ssl configuration' do
+      config.http_proxy = 'http://proxy.example.com:8080'
+      config.ignore_ssl = true
+
+      http_double = instance_double(Net::HTTP)
+      expect(Net::HTTP).to receive(:new).with('openapi.alipay.com', 443, 'proxy.example.com', 8080, nil, nil).and_return(http_double)
+      expect(http_double).to receive(:use_ssl=).with(true)
+      allow(http_double).to receive(:use_ssl?).and_return(true)
+      expect(http_double).to receive(:verify_mode=).with(OpenSSL::SSL::VERIFY_NONE)
+      expect(http_double).to receive(:open_timeout=).with(15)
+      expect(http_double).to receive(:read_timeout=).with(15)
+      expect(http_double).to receive(:request).with(request).and_return(double(body: build_signed_response('alipay.trade.query', 'code' => '10000')))
+
+      client.send(:perform_http_request, uri, request)
+    end
+  end
+
   describe '#verify_notify' do
     it 'verifies notifications using the configured public key in key mode' do
       params = { 'biz_content' => 'value' }

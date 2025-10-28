@@ -13,6 +13,12 @@ RSpec.describe Alipay::EasySDK::Kernel::Factory do
     }
   end
 
+  after do
+    %i[@config @kernel @payment @instance].each do |ivar|
+      described_class.instance_variable_set(ivar, nil)
+    end
+  end
+
   describe '.set_options' do
     it 'initializes the SDK context and returns the factory class' do
       expect(described_class.set_options(options)).to eq(described_class)
@@ -24,6 +30,24 @@ RSpec.describe Alipay::EasySDK::Kernel::Factory do
 
       expect(described_class.set_options(config)).to eq(described_class)
       expect(described_class.config).to be(config)
+    end
+
+    it 'derives certificate metadata when certificate paths are provided' do
+      SpecSupport::CertificateHelper.with_certificate_suite do |suite|
+        cert_options = options.merge(
+          merchant_cert_path: suite[:merchant_cert_path],
+          alipay_cert_path: suite[:alipay_cert_path],
+          alipay_root_cert_path: suite[:alipay_root_cert_path],
+          alipay_public_key: nil
+        )
+
+        described_class.set_options(cert_options)
+        config = described_class.config
+
+        expect(config.merchant_cert_sn).to eq(suite[:merchant_cert_sn])
+        expect(config.alipay_root_cert_sn).to eq(suite[:alipay_root_cert_sn])
+        expect(config.alipay_public_key).to eq(suite[:alipay_public_key])
+      end
     end
   end
 

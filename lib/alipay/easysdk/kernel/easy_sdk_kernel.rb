@@ -6,6 +6,7 @@ require_relative 'util/sign_content_extractor'
 require 'net/http'
 require 'uri'
 require 'cgi'
+require 'json'
 
 module Alipay
   module EasySDK
@@ -38,28 +39,47 @@ module Alipay
       end
 
       def get_config(key)
-        case key
-        when 'protocol'
-          @config.protocol
-        when 'gatewayHost'
-          @config.gateway_host
-        when 'appId'
-          @config.app_id
-        when 'merchantPrivateKey'
-          @config.merchant_private_key
-        when 'alipayPublicKey'
-          @config.alipay_public_key
-        when 'signType'
-          @config.sign_type
-        when 'charset'
-          @config.charset
-        when 'format'
-          @config.format
-        when 'version'
-          @config.version
-        else
-          nil
-        end
+        lookup = {
+          'protocol' => :protocol,
+          'gatewayHost' => :gateway_host,
+          'gateway_host' => :gateway_host,
+          'appId' => :app_id,
+          'app_id' => :app_id,
+          'merchantPrivateKey' => :merchant_private_key,
+          'merchant_private_key' => :merchant_private_key,
+          'alipayPublicKey' => :alipay_public_key,
+          'alipay_public_key' => :alipay_public_key,
+          'signType' => :sign_type,
+          'sign_type' => :sign_type,
+          'charset' => :charset,
+          'format' => :format,
+          'version' => :version,
+          'notifyUrl' => :notify_url,
+          'notify_url' => :notify_url,
+          'encryptKey' => :encrypt_key,
+          'encrypt_key' => :encrypt_key,
+          'httpProxy' => :http_proxy,
+          'http_proxy' => :http_proxy,
+          'ignoreSSL' => :ignore_ssl,
+          'ignore_ssl' => :ignore_ssl,
+          'merchantCertPath' => :merchant_cert_path,
+          'merchant_cert_path' => :merchant_cert_path,
+          'alipayCertPath' => :alipay_cert_path,
+          'alipay_cert_path' => :alipay_cert_path,
+          'alipayRootCertPath' => :alipay_root_cert_path,
+          'alipay_root_cert_path' => :alipay_root_cert_path,
+          'merchantCertSN' => :merchant_cert_sn,
+          'merchant_cert_sn' => :merchant_cert_sn,
+          'alipayCertSN' => :alipay_cert_sn,
+          'alipay_cert_sn' => :alipay_cert_sn,
+          'alipayRootCertSN' => :alipay_root_cert_sn,
+          'alipay_root_cert_sn' => :alipay_root_cert_sn
+        }
+
+        method = lookup[key]
+        return unless method
+
+        @config.public_send(method)
       end
 
       def get_sdk_version
@@ -220,7 +240,7 @@ module Alipay
         if @biz_params != nil
           biz_params = json.to_json_string(@biz_params)
         end
-        sorted_map = system_params || {}
+        sorted_map = (system_params || {}).dup
         if !biz_params.nil? && !biz_params.empty?
           # 模拟PHP json_encode($bizParams, JSON_UNESCAPED_UNICODE)
           json_string = JSON.generate(JSON.parse(biz_params)).gsub('/', "\\/")

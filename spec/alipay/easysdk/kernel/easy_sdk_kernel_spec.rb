@@ -131,6 +131,8 @@ RSpec.describe Alipay::EasySDK::Kernel::EasySDKKernel do
     expect(kernel.get_config('appId')).to eq('app-id')
     expect(kernel.get_config('gatewayHost')).to eq('openapi.alipay.com/gateway.do')
     expect(kernel.get_config('signType')).to eq('RSA2')
+    expect(kernel.get_config('notifyUrl')).to eq('https://notify.example.com/callback')
+    expect(kernel.get_config('notify_url')).to eq('https://notify.example.com/callback')
     expect(kernel.get_config('unknown')).to be_nil
   end
 

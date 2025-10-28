@@ -70,7 +70,10 @@ RSpec.describe Alipay::EasySDK::Payment::Wap::Client, 'form parity' do
         )
       end
 
-      raise "HTTP 请求失败: #{response.code}" if response.code.zero?
+      if response.code.zero?
+        message = response.return_message || '网络请求失败'
+        raise SocketError, "HTTP 请求失败: #{message}"
+      end
 
       Array(response.headers['Set-Cookie']).each do |set_cookie|
         key, value = set_cookie.split(';', 2).first.split('=', 2)
