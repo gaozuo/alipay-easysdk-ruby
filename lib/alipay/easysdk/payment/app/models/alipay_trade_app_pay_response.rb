@@ -1,15 +1,14 @@
 module Alipay
   module EasySDK
     module Payment
-      module Page
+      module App
         module Models
-          class AlipayTradePagePayResponse
-            attr_accessor :body, :payment_url
+          class AlipayTradeAppPayResponse
+            attr_accessor :body
 
             def self.from_map(response)
               new.tap do |instance|
                 instance.body = response[Alipay::EasySDK::Kernel::AlipayConstants::BODY_FIELD]
-                instance.payment_url = response['payment_url']
               end
             end
           end

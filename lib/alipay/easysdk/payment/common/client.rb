@@ -17,6 +17,27 @@ module Alipay
     module Payment
       module Common
         class Client
+          class TeaError < StandardError
+            attr_reader :data, :code
+
+            def initialize(data = {}, message = '', code = nil, cause = nil)
+              super(message)
+              @data = data
+              @code = code
+              set_backtrace(cause.backtrace) if cause
+            end
+          end
+
+          class TeaUnableRetryError < StandardError
+            attr_reader :last_request, :last_exception
+
+            def initialize(last_request, last_exception)
+              super(last_exception&.message)
+              @last_request = last_request
+              @last_exception = last_exception
+            end
+          end
+
           def initialize(kernel)
             @kernel = kernel
           end
@@ -72,7 +93,7 @@ module Alipay
 
           def verify_notify(parameters)
             if @kernel.is_cert_mode
-              @kernel.verify_params(parameters, @kernel.extract_alipay_public_key(@kernel.get_alipay_cert_sn('')))
+              @kernel.verify_params(parameters, @kernel.extract_alipay_public_key(''))
             else
               @kernel.verify_params(parameters, @kernel.get_config('alipayPublicKey'))
             end
@@ -118,7 +139,7 @@ module Alipay
             sign = @kernel.sign(system_params, biz_params, text_params, @kernel.get_config('merchantPrivateKey'))
 
             text_query = (@kernel.text_params || {}).dup
-            query_params = { 'sign' => sign }.merge(system_params)
+            query_params = { Alipay::EasySDK::Kernel::AlipayConstants::SIGN_FIELD => sign }.merge(system_params)
             query_params.merge!(text_query) unless text_query.empty?
 
             uri = build_gateway_uri(query_params)
@@ -131,11 +152,15 @@ module Alipay
             resp_map = @kernel.read_as_json(response, api_method)
 
             unless verify_response(resp_map)
-              raise '验签失败，请检查支付宝公钥设置是否正确。'
+              raise TeaError.new({}, '验签失败，请检查支付宝公钥设置是否正确。')
             end
 
             map = @kernel.to_resp_model(resp_map)
             response_class.from_map(map)
+          rescue TeaError => e
+            raise e
+          rescue StandardError => e
+            raise TeaError.new({}, e.message, nil, e)
           ensure
             clear_optional_params
           end
@@ -156,8 +181,8 @@ module Alipay
           end
 
           def build_gateway_uri(query_params)
-            host = @kernel.get_config('gatewayHost').to_s.sub(%r{/gateway\.do$}, '')
-            scheme = @kernel.get_config('protocol') || 'https'
+            host = @kernel.get_config(Alipay::EasySDK::Kernel::AlipayConstants::HOST_CONFIG_KEY).to_s.sub(%r{/gateway\.do$}, '')
+            scheme = @kernel.get_config(Alipay::EasySDK::Kernel::AlipayConstants::PROTOCOL_CONFIG_KEY) || 'https'
             uri = URI("#{scheme}://#{host}/gateway.do")
             uri.query = URI.encode_www_form(query_params.sort.to_h)
             uri

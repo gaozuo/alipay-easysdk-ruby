@@ -42,8 +42,7 @@ RSpec.describe Alipay::EasySDK::Payment::Wap::Client do
 
       response = client.pay('Subject', 'ORDER-1', '9.00', 'https://quit.example.com', 'https://return.example.com')
 
-      expect(response).to be_success
-      expect(response.form).to eq('<form></form>')
+      expect(response.body).to eq('<form></form>')
       expect(response.payment_url).to eq('https://example.com/gateway?biz=wap')
     end
   end

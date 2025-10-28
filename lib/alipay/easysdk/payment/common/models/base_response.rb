@@ -20,20 +20,6 @@ module Alipay
                 end
               end
             end
-
-            def success?
-              respond_to?('code') ? public_send('code') == '10000' : false
-            end
-
-            def error_message
-              if respond_to?('sub_msg') && public_send('sub_msg')
-                public_send('sub_msg')
-              elsif respond_to?('msg')
-                public_send('msg')
-              else
-                nil
-              end
-            end
           end
         end
       end

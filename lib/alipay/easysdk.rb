@@ -17,6 +17,10 @@ module Alipay
         Kernel::Factory.payment
       end
 
+      def app
+        payment.app
+      end
+
       def wap
         payment.wap
       end

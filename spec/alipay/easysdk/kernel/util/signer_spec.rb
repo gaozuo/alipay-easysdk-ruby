@@ -36,11 +36,28 @@ RSpec.describe Alipay::EasySDK::Kernel::Util::Signer do
 
       expect(signer.verify_params(parameters.merge('sign' => signer.sign('biz_content=value', private_key)), public_key)).to be(true)
     end
+
+    it 'handles symbol keyed hashes by normalizing keys like PHP implementation' do
+      parameters = {
+        biz_content: 'value',
+        sign_type: 'RSA2'
+      }
+      content = signer.get_sign_content(parameters.merge(sign: 'tmp'))
+      signature = signer.sign(content, private_key)
+
+      expect(signer.verify_params(parameters.merge(sign: signature), public_key)).to be(true)
+    end
   end
 
   describe '#get_sign_content' do
     it 'sorts keys alphabetically and removes sign/sign_type' do
       params = { 'b' => '2', 'a' => '1', 'sign' => 'sig', 'sign_type' => 'RSA2' }
+
+      expect(signer.get_sign_content(params)).to eq('a=1&b=2')
+    end
+
+    it 'converts symbol keys to strings before sorting like PHP ksort' do
+      params = { b: '2', a: '1', sign: 'sig', sign_type: 'RSA2' }
 
       expect(signer.get_sign_content(params)).to eq('a=1&b=2')
     end

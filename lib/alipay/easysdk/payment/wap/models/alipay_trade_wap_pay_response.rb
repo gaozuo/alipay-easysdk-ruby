@@ -8,25 +8,9 @@ module Alipay
 
             def self.from_map(response)
               new.tap do |instance|
-                instance.body = response['body']
+                instance.body = response[Alipay::EasySDK::Kernel::AlipayConstants::BODY_FIELD]
                 instance.payment_url = response['payment_url']
               end
-            end
-
-            def success?
-              !body.nil? && !body.to_s.empty?
-            end
-
-            def form
-              body
-            end
-
-            def error_message
-              nil
-            end
-
-            def to_s
-              body || ''
             end
           end
         end

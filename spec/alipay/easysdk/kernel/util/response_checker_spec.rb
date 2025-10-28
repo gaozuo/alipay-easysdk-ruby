@@ -27,6 +27,12 @@ RSpec.describe Alipay::EasySDK::Kernel::Util::ResponseChecker do
     expect(checker.success?(response)).to be(false)
   end
 
+  it 'treats camelCase subCode as failure' do
+    response = Struct.new(:code, :subCode).new(nil, 'BUSINESS_FAILED')
+
+    expect(checker.success?(response)).to be(false)
+  end
+
   it 'aliases #success to #success?' do
     response = build_response(code: '10000')
 

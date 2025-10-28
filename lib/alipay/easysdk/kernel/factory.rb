@@ -2,6 +2,7 @@ require_relative 'alipay_constants'
 require_relative 'config'
 require_relative 'cert_environment'
 require_relative 'easy_sdk_kernel'
+require_relative '../payment/app/client'
 require_relative '../payment/wap/client'
 require_relative '../payment/page/client'
 require_relative '../payment/common/client'
@@ -13,10 +14,13 @@ module Alipay
         class ConfigurationNotSetError < StandardError; end
 
         class << self
-          def set_options(options = nil)
+          def set_options(options)
+            raise ArgumentError, '配置参数不能为空' if options.nil?
+            return @instance if defined?(@instance) && @instance
+
             config = normalize_config(options)
             initialize_context(config)
-            @instance
+            @instance = self
           end
 
           alias setOptions set_options
@@ -27,14 +31,18 @@ module Alipay
             @config
           end
 
-          def payment
-            ensure_context_set!
-            @payment
-          end
+      def payment
+        ensure_context_set!
+        @payment
+      end
 
-          def wap
-            payment.wap
-          end
+      def app
+        payment.app
+      end
+
+      def wap
+        payment.wap
+      end
 
           def page
             payment.page
@@ -56,17 +64,15 @@ module Alipay
           private
 
           def normalize_config(options)
-            raise ArgumentError, '配置参数不能为空' if options.nil?
-            options.is_a?(Config) ? options : Config.new(options)
+            return options if options.is_a?(Config)
+            Config.new(options)
           end
 
           def initialize_context(config)
             apply_cert_environment(config)
-            config.validate
             @config = config
             @kernel = EasySDKKernel.new(config)
             @payment = Payment.new(@kernel)
-            @instance = self
           end
 
           def ensure_context_set!
@@ -74,19 +80,23 @@ module Alipay
           end
 
           def apply_cert_environment(config)
-            return if config.alipay_cert_path.nil? || config.alipay_cert_path.to_s.strip.empty?
+            return if config.alipayCertPath.nil? || config.alipayCertPath.to_s.strip.empty?
 
             cert_env = CertEnvironment.new
-            cert_env.setup(config.merchant_cert_path, config.alipay_cert_path, config.alipay_root_cert_path)
-            config.merchant_cert_sn = cert_env.merchant_cert_sn
-            config.alipay_root_cert_sn = cert_env.root_cert_sn
-            config.alipay_public_key ||= cert_env.cached_alipay_public_key
+            cert_env.setup(config.merchantCertPath, config.alipayCertPath, config.alipayRootCertPath)
+            config.merchantCertSN = cert_env.merchant_cert_sn
+            config.alipayRootCertSN = cert_env.root_cert_sn
+            config.alipayPublicKey ||= cert_env.cached_alipay_public_key
           end
         end
 
         class Payment
           def initialize(kernel)
             @kernel = kernel
+          end
+
+          def app
+            @app ||= Alipay::EasySDK::Payment::App::Client.new(@kernel)
           end
 
           def wap

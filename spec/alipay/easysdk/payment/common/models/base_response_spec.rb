@@ -9,7 +9,7 @@ RSpec.describe Alipay::EasySDK::Payment::Common::Models::BaseResponse do
         'code' => '10000',
         'msg' => 'Success',
         'order_id' => '202401010001',
-        'body' => '{"code":"10000"}'
+        'http_body' => '{"code":"10000"}'
       }
 
       response = described_class.from_map(map)
@@ -17,35 +17,14 @@ RSpec.describe Alipay::EasySDK::Payment::Common::Models::BaseResponse do
       expect(response.code).to eq('10000')
       expect(response.msg).to eq('Success')
       expect(response.order_id).to eq('202401010001')
-      expect(response.body).to eq('{"code":"10000"}')
+      expect(response.http_body).to eq('{"code":"10000"}')
     end
   end
 
-  describe '#success?' do
-    it 'is successful when code equals 10000' do
-      response = described_class.from_map('code' => '10000')
+  it 'allows direct access to fields without additional helpers' do
+    response = described_class.from_map('code' => '10000', 'msg' => 'Success')
 
-      expect(response).to be_success
-    end
-
-    it 'is unsuccessful for other codes' do
-      response = described_class.from_map('code' => '40004')
-
-      expect(response).not_to be_success
-    end
-  end
-
-  describe '#error_message' do
-    it 'prefers sub_msg when present' do
-      response = described_class.from_map('sub_msg' => 'Detailed error', 'msg' => 'Error')
-
-      expect(response.error_message).to eq('Detailed error')
-    end
-
-    it 'falls back to msg' do
-      response = described_class.from_map('msg' => 'Generic error')
-
-      expect(response.error_message).to eq('Generic error')
-    end
+    expect(response.code).to eq('10000')
+    expect(response.msg).to eq('Success')
   end
 end

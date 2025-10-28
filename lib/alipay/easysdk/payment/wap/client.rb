@@ -39,7 +39,7 @@ module Alipay
             sign = @kernel.sign(system_params, biz_params, text_params, @kernel.get_config("merchantPrivateKey"))
 
             response = {
-              "body" => @kernel.generate_page("POST", system_params, biz_params, text_params, sign),
+              Alipay::EasySDK::Kernel::AlipayConstants::BODY_FIELD => @kernel.generate_page("POST", system_params, biz_params, text_params, sign),
               "payment_url" => @kernel.generate_payment_url(system_params, biz_params, text_params, sign)
             }
             return Alipay::EasySDK::Payment::Wap::Models::AlipayTradeWapPayResponse.from_map(response)

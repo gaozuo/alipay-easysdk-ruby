@@ -33,8 +33,7 @@ RSpec.describe Alipay::EasySDK::Payment::Page::Client do
 
     response = client.pay('Subject', 'ORDER-1', '9.00', 'https://return.example.com')
 
-    expect(response).to be_success
-    expect(response.form).to eq('<form>page</form>')
+    expect(response.body).to eq('<form>page</form>')
     expect(response.payment_url).to eq('https://example.com/gateway?foo=bar')
   end
 

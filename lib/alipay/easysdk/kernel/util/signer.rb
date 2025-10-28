@@ -49,7 +49,7 @@ module Alipay
               # 调用openssl内置方法验签，完全模仿PHP的openssl_verify
               public_key = OpenSSL::PKey::RSA.new(res)
               digest = OpenSSL::Digest::SHA256.new
-              decoded_sign = Base64.decode64(sign)
+              decoded_sign = Base64.decode64(sign.to_s)
 
               result = public_key.verify(digest, decoded_sign, content)
               return result
@@ -59,14 +59,16 @@ module Alipay
           end
 
           def verify_params(parameters, public_key)
-            sign = parameters['sign']
-            content = get_sign_content(parameters)
-            return verify(content, sign, public_key)
+            normalized = stringify_keys(parameters)
+            sign = normalized['sign'] || ''
+            content = get_sign_content(normalized)
+            verify(content, sign, public_key)
           end
 
           def get_sign_content(params)
+            normalized = stringify_keys(params)
             # 模拟PHP的ksort
-            sorted_params = params.sort_by { |k, _| k.to_s }.to_h
+            sorted_params = normalized.sort.to_h
 
             # 移除sign和sign_type字段
             sorted_params.delete('sign')
@@ -88,6 +90,14 @@ module Alipay
           end
 
           private
+
+          def stringify_keys(hash)
+            return {} if hash.nil?
+
+            hash.each_with_object({}) do |(key, value), acc|
+              acc[key.to_s] = value
+            end
+          end
 
           # 完全复制PHP的wordwrap函数
           def wordwrap(str, width = 75, break_str = "\n", cut = false)

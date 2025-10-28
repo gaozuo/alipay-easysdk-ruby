@@ -7,7 +7,12 @@ module Alipay
             return true if response.respond_to?(:code) && response.code.to_s == '10000'
 
             code_blank = !response.respond_to?(:code) || blank?(response.code)
-            sub_code_blank = !response.respond_to?(:sub_code) || blank?(response.sub_code)
+            sub_code_value = if response.respond_to?(:subCode)
+                               response.subCode
+                             elsif response.respond_to?(:sub_code)
+                               response.sub_code
+                             end
+            sub_code_blank = blank?(sub_code_value)
 
             code_blank && sub_code_blank
           end

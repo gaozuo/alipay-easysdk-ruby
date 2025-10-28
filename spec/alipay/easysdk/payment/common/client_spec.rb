@@ -41,7 +41,6 @@ RSpec.describe Alipay::EasySDK::Payment::Common::Client do
       response = client.create('Subject', 'ORDER-1', '9.00', '2088')
 
       expect(response).to be_a(Alipay::EasySDK::Payment::Common::Models::AlipayTradeCreateResponse)
-      expect(response).to be_success
       expect(response.trade_no).to eq('20240101000001')
       expect(response.body).to eq(body)
     end
@@ -93,9 +92,7 @@ RSpec.describe Alipay::EasySDK::Payment::Common::Client do
 
     it 'uses certificate mode when merchant_cert_sn is present' do
       config.merchant_cert_sn = 'cert-sn'
-      allow(kernel).to receive(:extract_alipay_public_key).and_return('cert-public-key')
-      allow(kernel).to receive(:get_alipay_cert_sn).and_return('alipay-cert-sn')
-
+      expect(kernel).to receive(:extract_alipay_public_key).with('').and_return('cert-public-key')
       expect(kernel).to receive(:verify_params).with({ 'biz_content' => 'value' }, 'cert-public-key').and_return(true)
 
       expect(client.verify_notify('biz_content' => 'value')).to be(true)

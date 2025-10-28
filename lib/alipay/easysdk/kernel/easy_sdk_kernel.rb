@@ -3,6 +3,8 @@ require_relative 'config'
 require_relative 'util/json_util'
 require_relative 'util/signer'
 require_relative 'util/sign_content_extractor'
+require_relative 'util/aes'
+require_relative 'util/page_util'
 require 'net/http'
 require 'uri'
 require 'cgi'
@@ -39,47 +41,16 @@ module Alipay
       end
 
       def get_config(key)
-        lookup = {
-          'protocol' => :protocol,
-          'gatewayHost' => :gateway_host,
-          'gateway_host' => :gateway_host,
-          'appId' => :app_id,
-          'app_id' => :app_id,
-          'merchantPrivateKey' => :merchant_private_key,
-          'merchant_private_key' => :merchant_private_key,
-          'alipayPublicKey' => :alipay_public_key,
-          'alipay_public_key' => :alipay_public_key,
-          'signType' => :sign_type,
-          'sign_type' => :sign_type,
-          'charset' => :charset,
-          'format' => :format,
-          'version' => :version,
-          'notifyUrl' => :notify_url,
-          'notify_url' => :notify_url,
-          'encryptKey' => :encrypt_key,
-          'encrypt_key' => :encrypt_key,
-          'httpProxy' => :http_proxy,
-          'http_proxy' => :http_proxy,
-          'ignoreSSL' => :ignore_ssl,
-          'ignore_ssl' => :ignore_ssl,
-          'merchantCertPath' => :merchant_cert_path,
-          'merchant_cert_path' => :merchant_cert_path,
-          'alipayCertPath' => :alipay_cert_path,
-          'alipay_cert_path' => :alipay_cert_path,
-          'alipayRootCertPath' => :alipay_root_cert_path,
-          'alipay_root_cert_path' => :alipay_root_cert_path,
-          'merchantCertSN' => :merchant_cert_sn,
-          'merchant_cert_sn' => :merchant_cert_sn,
-          'alipayCertSN' => :alipay_cert_sn,
-          'alipay_cert_sn' => :alipay_cert_sn,
-          'alipayRootCertSN' => :alipay_root_cert_sn,
-          'alipay_root_cert_sn' => :alipay_root_cert_sn
-        }
+        method = key.to_s
+        return @config.public_send(method) if @config.respond_to?(method)
 
-        method = lookup[key]
-        return unless method
+        snake = method.gsub(/([A-Z]+)/) { "_#{$1.downcase}" }.sub(/^_/, '')
+        return @config.public_send(snake) if @config.respond_to?(snake)
 
-        @config.public_send(method)
+        camel = snake.split('_').inject { |memo, part| memo + part.capitalize }
+        return @config.public_send(camel) if camel && @config.respond_to?(camel)
+
+        nil
       end
 
       def get_sdk_version
@@ -97,9 +68,9 @@ module Alipay
       def read_as_json(response, method)
         response_body = response.body
         map = {}
-        map['body'] = response_body
-        map['method'] = method
-        return map
+        map[AlipayConstants::BODY_FIELD] = response_body
+        map[AlipayConstants::METHOD_FIELD] = method
+        map
       end
 
       def get_random_boundary
@@ -109,11 +80,12 @@ module Alipay
       def generate_page(method, system_params, biz_params, text_params, sign)
         puts "[DEBUG] generate_page - sign长度: #{sign.length}" if ENV['DEBUG']
         signed_params = build_signed_params(system_params, biz_params, text_params, sign)
-        if method == 'GET'
-          return build_gateway_url(signed_params)
-        elsif method == 'POST'
+        case method
+        when AlipayConstants::GET
+          build_gateway_url(signed_params)
+        when AlipayConstants::POST
           puts "[DEBUG] generate_page POST - sorted_map中sign长度: #{signed_params[AlipayConstants::SIGN_FIELD].length}" if ENV['DEBUG']
-          return build_form(get_gateway_server_url, signed_params)
+          build_form(get_gateway_server_url, signed_params)
         else
           raise "不支持" + method
         end
@@ -130,8 +102,8 @@ module Alipay
 
       def get_alipay_cert_sn(resp_map)
         if !@config.merchant_cert_sn.nil? && !@config.merchant_cert_sn.empty?
-          body = JSON.parse(resp_map['body'])
-          alipay_cert_sn = body['alipay_cert_sn']
+          body = JSON.parse(resp_map[AlipayConstants::BODY_FIELD])
+          alipay_cert_sn = body[AlipayConstants::ALIPAY_CERT_SN_FIELD]
           return alipay_cert_sn
         end
       end
@@ -150,10 +122,10 @@ module Alipay
       end
 
       def verify(resp_map, alipay_public_key)
-        resp = JSON.parse(resp_map['body'])
+        resp = JSON.parse(resp_map[AlipayConstants::BODY_FIELD])
         sign = resp[AlipayConstants::SIGN_FIELD]
         sign_content_extractor = Alipay::EasySDK::Kernel::Util::SignContentExtractor.new
-        content = sign_content_extractor.get_sign_source_data(resp_map['body'], resp_map['method'])
+        content = sign_content_extractor.get_sign_source_data(resp_map[AlipayConstants::BODY_FIELD], resp_map[AlipayConstants::METHOD_FIELD])
         signer = Alipay::EasySDK::Kernel::Util::Signer.new
         return signer.verify(content, sign, alipay_public_key)
       end
@@ -178,18 +150,55 @@ module Alipay
         URI.encode_www_form(sorted_map)
       end
 
+      def to_multipart_request_body(text_params, file_params, boundary)
+        @text_params = text_params
+        @biz_params = nil
+        if text_params != nil && !@optional_text_params.empty?
+          @text_params = text_params.merge(@optional_text_params)
+        elsif text_params == nil
+          @text_params = @optional_text_params.dup
+        end
+
+        parts = []
+        (@text_params || {}).each do |key, value|
+          parts << build_multipart_text_part(boundary, key, value)
+        end
+
+        (file_params || {}).each do |key, path|
+          raise "文件#{path}不存在" unless File.exist?(path.to_s)
+          file_content = File.binread(path)
+          filename = File.basename(path)
+          parts << build_multipart_file_part(boundary, key, filename, file_content)
+        end
+
+        return nil if parts.empty?
+
+        parts << "--#{boundary}--\r\n"
+        parts.join
+      end
+
+      def aes_encrypt(content, encrypt_key)
+        aes = Alipay::EasySDK::Kernel::Util::AES.new
+        aes.aes_encrypt(content, encrypt_key)
+      end
+
+      def aes_decrypt(content, encrypt_key)
+        aes = Alipay::EasySDK::Kernel::Util::AES.new
+        aes.aes_decrypt(content, encrypt_key)
+      end
+
       def sort_map(random_map)
         return random_map
       end
 
       def to_resp_model(resp_map)
-        body = resp_map['body']
-        method_name = resp_map['method']
+        body = resp_map[AlipayConstants::BODY_FIELD]
+        method_name = resp_map[AlipayConstants::METHOD_FIELD]
         response_node_name = method_name.gsub(".", "_") + "_response"
 
         model = JSON.parse(body)
-        if body.include?("error_response")
-          result = model["error_response"]
+        if body.include?(AlipayConstants::ERROR_RESPONSE)
+          result = model[AlipayConstants::ERROR_RESPONSE]
           result['body'] = body
         else
           result = model[response_node_name]
@@ -236,15 +245,15 @@ module Alipay
           @biz_params = @optional_biz_params
         end
 
-        json = Alipay::EasySDK::Kernel::Util::JsonUtil.new
-        if @biz_params != nil
-          biz_params = json.to_json_string(@biz_params)
-        end
+        json_util = Alipay::EasySDK::Kernel::Util::JsonUtil.new
+        biz_content = json_util.to_json_string(@biz_params) unless @biz_params.nil?
+
         sorted_map = (system_params || {}).dup
-        if !biz_params.nil? && !biz_params.empty?
-          # 模拟PHP json_encode($bizParams, JSON_UNESCAPED_UNICODE)
-          json_string = JSON.generate(JSON.parse(biz_params)).gsub('/', "\\/")
-          sorted_map[AlipayConstants::BIZ_CONTENT_FIELD] = json_string
+        if !biz_content.nil?
+          unless biz_content.respond_to?(:empty?) && biz_content.empty?
+            serialized = JSON.generate(biz_content, ascii_only: false).gsub('/', '\\/')
+            sorted_map[AlipayConstants::BIZ_CONTENT_FIELD] = serialized
+          end
         end
         if !@text_params.nil? && !@text_params.empty?
           if !sorted_map.empty?
@@ -253,15 +262,19 @@ module Alipay
             sorted_map = @text_params
           end
         end
-        if get_config('notify_url') != nil
-          sorted_map['notify_url'] = get_config('notify_url')
+        notify_value = get_config(AlipayConstants::NOTIFY_URL_CONFIG_KEY)
+        if !notify_value.nil? && notify_value.to_s.strip != ''
+          sorted_map[AlipayConstants::NOTIFY_URL_FIELD] = notify_value
         end
         return sorted_map
       end
 
       def get_sign_content(params)
         # 模拟PHP的ksort
-        sorted_params = params.sort_by { |k, _| k.to_s }.to_h
+        normalized = params.each_with_object({}) do |(key, value), acc|
+          acc[key.to_s] = value
+        end
+        sorted_params = normalized.sort.to_h
 
         string_to_be_signed = ""
         i = 0
@@ -281,7 +294,9 @@ module Alipay
       end
 
       def get_gateway_server_url
-        return get_config('protocol') + '://' + get_config('gatewayHost').gsub('/gateway.do', '') + '/gateway.do'
+        protocol = get_config(AlipayConstants::PROTOCOL_CONFIG_KEY)
+        host = get_config(AlipayConstants::HOST_CONFIG_KEY)
+        return protocol + '://' + host.gsub('/gateway.do', '') + '/gateway.do'
       end
 
       def check_empty(value)
@@ -322,25 +337,8 @@ module Alipay
         puts "[DEBUG] build_form - 原始params keys: #{params.keys.join(', ')}" if ENV['DEBUG']
         puts "[DEBUG] build_form - sign长度: #{params[AlipayConstants::SIGN_FIELD].length}" if ENV['DEBUG'] && params[AlipayConstants::SIGN_FIELD]
 
-        # 完全按照PHP版本的PageUtil::buildForm方法：过滤空值参数
-        form_fields = ""
-        params.each do |key, val|
-          if !check_empty(val)  # 与PHP版本的checkEmpty逻辑完全一致
-            # 按照PHP版本：将单引号替换为&amp;apos;
-            escaped_val = val.to_s.gsub("'", "&apos;")
-            form_fields += "<input type='hidden' name='#{key}' value='#{escaped_val}'/>"
-          end
-        end
-
-        # 完全按照PHP版本：在action URL中添加charset参数
-        action_url = "#{url}?charset=#{AlipayConstants::DEFAULT_CHARSET}"
-
-        <<~HTML
-          <form id='alipaysubmit' name='alipaysubmit' action='#{action_url}' method='POST'>
-            #{form_fields}
-            <input type='submit' value='ok' style='display:none;'></form>
-          <script>document.forms['alipaysubmit'].submit();</script>
-        HTML
+        page_util = Alipay::EasySDK::Kernel::Util::PageUtil.new
+        page_util.build_form(url, params)
       end
 
       def build_signed_params(system_params, biz_params, text_params, sign)
@@ -350,10 +348,25 @@ module Alipay
       end
 
       def build_gateway_url(signed_params)
-        base_url = get_gateway_server_url + "?charset=#{AlipayConstants::DEFAULT_CHARSET}"
+        base_url = get_gateway_server_url
         query = build_query_string(signed_params)
         return base_url if query.nil? || query.empty?
-        base_url + '&' + query
+        base_url + '?' + query
+      end
+
+      def build_multipart_text_part(boundary, key, value)
+        "--#{boundary}\r\n" \
+          "Content-Disposition: form-data; name=\"#{key}\"\r\n" \
+          "\r\n" \
+          "#{value}\r\n"
+      end
+
+      def build_multipart_file_part(boundary, key, filename, content)
+        "--#{boundary}\r\n" \
+          "Content-Disposition: form-data; name=\"#{key}\"; filename=\"#{filename}\"\r\n" \
+          "Content-Type: application/octet-stream\r\n" \
+          "\r\n" \
+          "#{content}\r\n"
       end
       end
     end

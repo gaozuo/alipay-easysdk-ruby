@@ -6,17 +6,24 @@ RSpec.describe Alipay::EasySDK::Kernel::Util::JsonUtil do
   subject(:util) { described_class.new }
 
   describe '#to_json_string' do
-    it 'serializes hashes using JSON.generate' do
-      expect(util.to_json_string({ subject: 'Book' })).to eq('{"subject":"Book"}')
+    it 'recursively converts hashes and arrays with underscored keys' do
+      payload = {
+        'CamelCaseKey' => [{ 'InnerKey' => 'Value' }],
+        subject: 'Book'
+      }
+
+      expect(util.to_json_string(payload)).to eq(
+        'camel_case_key' => [{ 'inner_key' => 'Value' }],
+        'subject' => 'Book'
+      )
     end
 
-    it 'returns strings untouched' do
-      expect(util.to_json_string('raw-json')).to eq('raw-json')
+    it 'returns empty hash when payload is nil' do
+      expect(util.to_json_string(nil)).to eq({})
     end
 
-    it 'falls back to to_s for unsupported objects' do
-      object = double(to_s: 'fallback')
-      expect(util.to_json_string(object)).to eq('fallback')
+    it 'raises when payload is not a hash' do
+      expect { util.to_json_string('raw-json') }.to raise_error(ArgumentError)
     end
   end
 

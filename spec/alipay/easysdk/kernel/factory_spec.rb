@@ -54,14 +54,16 @@ RSpec.describe Alipay::EasySDK::Kernel::Factory do
   describe 'accessors' do
     before { described_class.set_options(options) }
 
-    it 'provides a payment facade with the three payment client families' do
+    it 'provides a payment facade with the payment client families' do
       expect(described_class.payment).to be_a(described_class::Payment)
+      expect(described_class.payment.app).to be_a(Alipay::EasySDK::Payment::App::Client)
       expect(described_class.payment.wap).to be_a(Alipay::EasySDK::Payment::Wap::Client)
       expect(described_class.payment.page).to be_a(Alipay::EasySDK::Payment::Page::Client)
       expect(described_class.payment.common).to be_a(Alipay::EasySDK::Payment::Common::Client)
     end
 
     it 'exposes convenience shortcuts on the factory class itself' do
+      expect(described_class.app).to be_a(Alipay::EasySDK::Payment::App::Client)
       expect(described_class.wap).to be_a(Alipay::EasySDK::Payment::Wap::Client)
       expect(described_class.page).to be_a(Alipay::EasySDK::Payment::Page::Client)
       expect(described_class.common).to be_a(Alipay::EasySDK::Payment::Common::Client)

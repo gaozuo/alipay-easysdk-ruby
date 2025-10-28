@@ -4,6 +4,7 @@ require 'spec_helper'
 require 'cgi'
 require 'json'
 require 'uri'
+require 'tempfile'
 
 RSpec.describe Alipay::EasySDK::Kernel::EasySDKKernel do
   subject(:kernel) { described_class.new(config) }
@@ -66,7 +67,7 @@ RSpec.describe Alipay::EasySDK::Kernel::EasySDKKernel do
   end
 
   describe '#generate_page' do
-    let(:system_params) { { 'method' => 'foo' } }
+    let(:system_params) { { 'method' => 'foo', 'charset' => 'UTF-8' } }
     let(:text_params) { { 'return_url' => "https://example.com/with'special" } }
 
     it 'builds a POST auto-submit form with escaped values' do
@@ -83,22 +84,44 @@ RSpec.describe Alipay::EasySDK::Kernel::EasySDKKernel do
       url = kernel.generate_page('GET', system_params, {}, {}, 'signature123')
 
       expect(url).to eq(expected_url)
-      expect(url).to start_with('https://openapi.alipay.com/gateway.do?charset=UTF-8&')
+      expect(url).to start_with('https://openapi.alipay.com/gateway.do?')
+      expect(url.scan('charset=').size).to eq(1)
       expect(url).to include('sign=signature123')
     end
   end
 
   describe '#generate_payment_url' do
-    let(:system_params) { { 'method' => 'foo' } }
+    let(:system_params) { { 'method' => 'foo', 'charset' => 'UTF-8' } }
 
     it 'reuses the existing parameter assembly for gateway urls' do
       payment_url = kernel.generate_payment_url(system_params, { 'subject' => 'Book' }, { 'return_url' => 'https://example.com' }, 'signature123')
       query = CGI.parse(URI(payment_url).query)
 
+      expect(query['charset'].first).to eq('UTF-8')
       expect(query['sign'].first).to eq('signature123')
       expect(query['method'].first).to eq('foo')
       expect(query['return_url'].first).to eq('https://example.com')
       expect(query['biz_content'].first).to include('"subject":"Book"')
+    end
+  end
+
+  describe '#to_multipart_request_body' do
+    it 'builds a multipart body merging optional params and files' do
+      boundary = '----RubyBoundary'
+      kernel.inject_text_param('app_auth_token', 'APP')
+      file = Tempfile.new('upload')
+      file.write('file-content')
+      file.rewind
+
+      body = kernel.to_multipart_request_body({ 'field' => 'value' }, { 'file' => file.path }, boundary)
+
+      expect(body).to include("--#{boundary}\r\nContent-Disposition: form-data; name=\"field\"")
+      expect(body).to include("value\r\n")
+      expect(body).to include("filename=\"#{File.basename(file.path)}\"")
+      expect(body).to include('file-content')
+      expect(body).to end_with("--#{boundary}--\r\n")
+    ensure
+      file.close!
     end
   end
 
@@ -112,8 +135,8 @@ RSpec.describe Alipay::EasySDK::Kernel::EasySDKKernel do
 
     it 'delegates to Signer with extracted payload' do
       payload = {
-        'body' => { 'alipay_trade_query_response' => { 'code' => '10000' }, 'sign' => 'abc' }.to_json,
-        'method' => 'alipay.trade.query'
+        Alipay::EasySDK::Kernel::AlipayConstants::BODY_FIELD => { 'alipay_trade_query_response' => { 'code' => '10000' }, 'sign' => 'abc' }.to_json,
+        Alipay::EasySDK::Kernel::AlipayConstants::METHOD_FIELD => 'alipay.trade.query'
       }
 
       expect(signer).to receive(:verify) do |content, sign, public_key|
@@ -130,7 +153,7 @@ RSpec.describe Alipay::EasySDK::Kernel::EasySDKKernel do
   it 'exposes configuration values via get_config' do
     expect(kernel.get_config('appId')).to eq('app-id')
     expect(kernel.get_config('gatewayHost')).to eq('openapi.alipay.com/gateway.do')
-    expect(kernel.get_config('signType')).to eq('RSA2')
+    expect(kernel.get_config('signType')).to be_nil
     expect(kernel.get_config('notifyUrl')).to eq('https://notify.example.com/callback')
     expect(kernel.get_config('notify_url')).to eq('https://notify.example.com/callback')
     expect(kernel.get_config('unknown')).to be_nil
