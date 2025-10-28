@@ -1,5 +1,12 @@
 # Changelog
 
+## 1.0.3 - 2024-06-06
+
+- Add `payment/app` client and response model to match PHP EasySDK behaviour.
+- Align kernel utilities (Config, Factory, EasySDKKernel, PageUtil, AES, Signer, JsonUtil, ResponseChecker) with the PHP implementation.
+- Update Payment::Common/Page/Wap clients and models to PHP parity while retaining the custom `payment_url` extension.
+- Refresh parity fixtures, expand test coverage, and remove the deprecated `examples/` directory.
+
 ## 1.0.2 - 2024-04-15
 
 - Align `payment/page`, `payment/wap`, and `payment/common` dependencies with the PHP EasySDK implementation.
