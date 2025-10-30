@@ -47,7 +47,7 @@ RSpec.describe Alipay::EasySDK::Payment::Common::Client do
   end
 
   describe 'state management' do
-    it 'clears optional parameters after each request' do
+    it 'retains optional parameters after each request to mirror PHP SDK behavior' do
       client.optional('extra', 'value')
       client.async_notify('https://notify.example.com')
 
@@ -55,8 +55,8 @@ RSpec.describe Alipay::EasySDK::Payment::Common::Client do
 
       client.close('ORDER-1')
 
-      expect(kernel.optional_biz_params).to be_empty
-      expect(kernel.optional_text_params).to be_empty
+      expect(kernel.optional_biz_params).to include('extra' => 'value')
+      expect(kernel.optional_text_params).to include('notify_url' => 'https://notify.example.com')
     end
   end
 

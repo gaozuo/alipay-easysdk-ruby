@@ -1,11 +1,11 @@
 method=alipay.trade.page.pay
 app_id=9021000156667919
-timestamp=2025-10-28 10:01:29
+timestamp=2025-10-30 04:19:02
 format=json
 version=1.0
-alipay_sdk=alipay-easysdk-ruby-1.0.2
+alipay_sdk=alipay-easysdk-ruby-1.0.3
 charset=UTF-8
 sign_type=RSA2
-biz_content={"subject":"1123","out_trade_no":"AUTO202510281001291172","total_amount":"9.00","product_code":"FAST_INSTANT_TRADE_PAY"}
+biz_content={"subject":"1123","out_trade_no":"AUTO202510300419029025","total_amount":"9.00","product_code":"FAST_INSTANT_TRADE_PAY"}
 return_url=https://your-return-url.com
-sign=eQNJI+R9H3wGChLtVtOgfU61PkD27TfclN6nwdglMzJ25tXaxIWeReZcx21VQuzoJt2raPkzYGSgri9FOf5hXxzKt70dPcSBy6AHHvCgkFB0glDC7UJWDfMuV4iaiHwCbQC1EVTsm1uox4ZWXSlc7Kc42tO/c/TunCIwLrGuxNh8+sQZ7ke+LJDDSIJuSVtiPeYHbK1KD5yZTlaxt7N/NQ2MNypXiMVWhoqfnod50gBbbabOWE9N2DLNhDNxzUEkLG8CMn6su6o+6DeVegvdYtCSVNKv0mSWTTXf+L9wEvic/fIC4W0nS9MJZtMYshTWLs7YVZPE4JW+ZTrkeuHy0A==
+sign=mwmEPPIS1hKVcrIHg6wm9jTz4oF/kV5KyIgxFEMsKD3gAH33aHaC2wOga1Xnp3UXFtVxdPORhbCHzgCz0S2eOfBup8w8iybaT9wgVKrjogCELsqZi1nXS+hgNaeR6keKohDkk4oKJwWjf+pHD3kdali5elQEd2YbcmdP0o/IHgEGSLdHd5p4VShGimDEEbigw/XJ4/FUm1IoNzcw+TkmMYc+xI9mHgXyCshc1Nt52uf9/h55FkRlDv3hkrecIj3TgYb9e1as/gbVZfBm9DBYz+wMouxo8N4/S8fMUM6b51tqoXYclJZQS7x7kvk2W4zIm6q87O8ptu6Fc9u1NXAIew==
