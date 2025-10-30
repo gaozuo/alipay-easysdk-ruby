@@ -8,7 +8,7 @@ RSpec.describe Alipay::EasySDK::Payment::Page::Client do
       Alipay::EasySDK::Kernel::EasySDKKernel,
       get_config: nil,
       get_timestamp: '2024-01-01 00:00:00',
-      get_sdk_version: 'alipay-easysdk-ruby-1.0.1',
+      get_sdk_version: 'alipay-easysdk-ruby-1.0.4',
       get_merchant_cert_sn: nil,
       get_alipay_root_cert_sn: nil
     )
