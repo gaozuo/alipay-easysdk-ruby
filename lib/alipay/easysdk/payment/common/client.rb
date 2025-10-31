@@ -269,8 +269,6 @@ module Alipay
             self
           end
 
-          private
-
           def execute(api_method, biz_params, text_params, response_class)
             system_params = base_system_params(api_method)
 
@@ -300,6 +298,8 @@ module Alipay
           rescue StandardError => e
             raise TeaError.new({}, e.message, nil, e)
           end
+
+          private
 
           def base_system_params(method)
             {

@@ -2,6 +2,7 @@
 
 require 'spec_helper'
 require 'json'
+require 'cgi'
 
 RSpec.describe Alipay::EasySDK::Payment::Common::Client do
   let(:config) do
@@ -42,6 +43,44 @@ RSpec.describe Alipay::EasySDK::Payment::Common::Client do
 
       expect(response).to be_a(Alipay::EasySDK::Payment::Common::Models::AlipayTradeCreateResponse)
       expect(response.trade_no).to eq('20240101000001')
+      expect(response.body).to eq(body)
+    end
+  end
+
+  describe '#execute' do
+    it 'closes a trade using documented parameters' do
+      biz_params = {
+        'out_trade_no' => '20150320010101001',
+        'operator_id' => 'OP001'
+      }
+      text_params = {}
+      body = build_signed_response(
+        'alipay.trade.close',
+        'code' => '10000',
+        'msg' => 'Success',
+        'out_trade_no' => '20150320010101001'
+      )
+      http_response = double(body: body)
+
+      expect(client).to receive(:perform_http_request) do |uri, request|
+        expect(uri.query).to include('method=alipay.trade.close')
+
+        payload = JSON.parse(CGI.parse(request.body)['biz_content'].first)
+        expect(payload).to include(biz_params)
+
+        http_response
+      end
+
+      response = client.execute(
+        'alipay.trade.close',
+        biz_params,
+        text_params,
+        Alipay::EasySDK::Payment::Common::Models::AlipayTradeCloseResponse
+      )
+
+      expect(response).to be_a(Alipay::EasySDK::Payment::Common::Models::AlipayTradeCloseResponse)
+      expect(response.code).to eq('10000')
+      expect(response.out_trade_no).to eq('20150320010101001')
       expect(response.body).to eq(body)
     end
   end
